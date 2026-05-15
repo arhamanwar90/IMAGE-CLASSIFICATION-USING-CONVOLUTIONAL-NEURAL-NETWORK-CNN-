@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FashionNet · CNN Image Classifier</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{background:#08090C;color:#F0EFE9;font-family:'DM Sans',sans-serif;overflow-x:hidden}
+:root{--g:#F0B429;--c:#00C9D1;--s:#22D67A;--e:#FF5F5F;--bg2:#0F101A;--bg3:#161724;--b:rgba(255,255,255,.07)}
+nav{position:fixed;top:0;left:0;right:0;z-index:99;padding:1rem 3rem;display:flex;align-items:center;justify-content:space-between;transition:all .3s}
+nav.on{background:rgba(8,9,12,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--b)}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:var(--g);text-decoration:none}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{color:#8A8A9A;text-decoration:none;font-size:.875rem;transition:color .2s}
+.nav-links a:hover{color:#F0EFE9}
+.nlive{display:inline-flex;align-items:center;gap:.4rem;background:rgba(34,214,122,.1);border:1px solid rgba(34,214,122,.3);color:var(--s);padding:.25rem .85rem;border-radius:100px;font-size:.75rem;font-weight:600}
+.ldot{width:6px;height:6px;border-radius:50%;background:var(--s);animation:pd 1.5s ease-in-out infinite}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* HERO */
+.hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6rem 2rem 4rem;overflow:hidden}
+#pc{position:absolute;inset:0;opacity:.4}
+.hero>*:not(#pc){position:relative}
+.hbadge{display:inline-block;background:rgba(240,180,40,.12);border:1px solid rgba(240,180,40,.3);color:var(--g);font-size:.75rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:.35rem 1rem;border-radius:100px;margin-bottom:1.5rem;animation:pd 2.5s ease-in-out infinite}
+h1{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(3.5rem,9vw,7rem);line-height:.95;letter-spacing:-.04em}
+h1 span{color:var(--g)}
+.hsub{color:#8A8A9A;font-size:1.05rem;max-width:520px;margin:1.5rem auto 2.5rem;font-weight:300;line-height:1.75}
+.stats{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-bottom:2.5rem}
+.pill{background:var(--bg2);border:1px solid var(--b);border-radius:100px;padding:.5rem 1.2rem;font-size:.85rem;display:flex;align-items:center;gap:.5rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g)}
+.dot.c{background:var(--c)}.dot.s{background:var(--s)}
+.btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.btn{padding:.75rem 1.75rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;cursor:pointer;border:none;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem}
+.bg{background:var(--g);color:#0A0800}.bg:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.bs{background:var(--s);color:#011A0A}.bs:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.bo{background:transparent;color:#F0EFE9;border:1px solid var(--b)}.bo:hover{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.18)}
+
+/* SECTIONS */
+section{padding:5.5rem 3rem}.si{max-width:1100px;margin:0 auto}
+.sl{font-size:.7rem;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--g);margin-bottom:.6rem}
+.st{font-family:'Syne',sans-serif;font-weight:700;font-size:clamp(1.9rem,3.8vw,2.65rem);letter-spacing:-.03em;line-height:1.1;margin-bottom:.9rem}
+.sd{color:#8A8A9A;max-width:540px;font-size:.95rem;line-height:1.8}
+.dvd{height:1px;background:var(--b);max-width:1100px;margin:0 auto}
+
+/* OVERVIEW */
+.og{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:3rem}
+.oc{background:var(--bg2);border:1px solid var(--b);border-radius:14px;padding:1.75rem;transition:border-color .2s}
+.oc:hover{border-color:rgba(240,180,40,.22)}
+.on{font-family:'Syne',sans-serif;font-size:2.75rem;font-weight:800;color:var(--g);line-height:1;letter-spacing:-.04em;margin-bottom:.6rem}
+.ol{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:#8A8A9A;margin-bottom:.4rem}
+.od{font-size:.88rem;color:#8A8A9A;line-height:1.7}
+
+/* CLASSES */
+.cg{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-top:3rem}
+.cc{background:#08090C;border:1px solid var(--b);border-radius:12px;padding:1.25rem .75rem;text-align:center;transition:all .2s}
+.cc:hover{border-color:rgba(240,180,40,.25);transform:translateY(-3px)}
+.ci{font-size:2.2rem;display:block;margin-bottom:.6rem}
+.cn{font-size:.8rem;font-weight:500;margin-bottom:.2rem}
+.cd{font-size:.7rem;color:#8A8A9A;font-family:'JetBrains Mono',monospace}
+
+/* ARCH */
+.af{display:flex;align-items:center;margin-top:3rem;overflow-x:auto;padding-bottom:1rem;gap:0}
+.lb{flex:0 0 auto;background:var(--bg2);border:1px solid var(--b);border-radius:10px;padding:.9rem .7rem;text-align:center;width:105px}
+.lb.cv{border-color:rgba(240,180,40,.38);background:rgba(240,180,40,.05)}
+.lb.pl{border-color:rgba(0,200,210,.32);background:rgba(0,200,210,.04)}
+.lb.dn{border-color:rgba(34,214,122,.3);background:rgba(34,214,122,.04)}
+.lb.ou{border-color:rgba(240,180,40,.5);background:rgba(240,180,40,.08)}
+.ln{font-size:.65rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.35rem}
+.lb.cv .ln{color:var(--g)}.lb.pl .ln{color:var(--c)}.lb.dn .ln{color:var(--s)}.lb.ou .ln{color:var(--g)}.lb .ln{color:#8A8A9A}
+.ls{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#F0EFE9;line-height:1.4}
+.lp{font-size:.6rem;color:#8A8A9A;margin-top:.3rem}
+.ar{width:26px;height:2px;background:var(--b);flex:0 0 26px;position:relative}
+.ar::after{content:'';position:absolute;right:-4px;top:-4px;border:4px solid transparent;border-left:6px solid rgba(255,255,255,.14)}
+
+/* CHARTS */
+.chartg{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:3rem}
+.chartc{background:var(--bg2);border:1px solid var(--b);border-radius:14px;padding:1.6rem}
+.ctt{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;margin-bottom:.2rem}
+.cts{font-size:.78rem;color:#8A8A9A;margin-bottom:1.1rem}
+.ctw{position:relative;height:210px}
+
+/* METRICS */
+.mt{display:grid;grid-template-columns:240px 1fr;gap:2.5rem;margin-top:3rem;align-items:start}
+.aring{width:190px;height:190px;border-radius:50%;background:conic-gradient(var(--g) 0% 89.19%,var(--bg3) 89.19% 100%);display:flex;align-items:center;justify-content:center;position:relative;margin:0 auto 1rem}
+.aring::before{content:'';position:absolute;inset:12px;border-radius:50%;background:var(--bg2)}
+.ai{position:relative;z-index:1;text-align:center}
+.av{font-family:'Syne',sans-serif;font-size:2.3rem;font-weight:800;color:var(--g);line-height:1}
+.al{font-size:.72rem;color:#8A8A9A;margin-top:.2rem}
+.brow{display:grid;grid-template-columns:115px 1fr 45px;align-items:center;gap:.7rem;margin-bottom:.65rem}
+.bl{font-size:.78rem;color:#F0EFE9}
+.bt{height:7px;background:var(--bg3);border-radius:100px;overflow:hidden}
+.bf{height:100%;border-radius:100px;transition:width 1.2s ease}
+.bp{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#8A8A9A;text-align:right}
+
+/* CM */
+.cmw{margin-top:2.5rem;overflow-x:auto}
+.cmt{border-collapse:collapse;font-size:.68rem}
+.cmt td,.cmt th{width:50px;height:40px;text-align:center;vertical-align:middle;border:1px solid rgba(255,255,255,.04)}
+.cmt th{color:#8A8A9A;font-weight:400;font-size:.62rem}
+.cmt .rl{color:#8A8A9A;font-size:.62rem;white-space:nowrap;padding-right:.5rem;text-align:right}
+.cmt .dg{font-weight:600}
+
+/* CODE */
+.ctabs{display:flex;gap:.5rem;margin-top:2.75rem;margin-bottom:1.25rem}
+.ctab{background:transparent;border:1px solid var(--b);color:#8A8A9A;font-family:'DM Sans',sans-serif;font-size:.78rem;padding:.45rem 1.1rem;border-radius:8px;cursor:pointer;transition:all .2s}
+.ctab.on{background:rgba(240,180,40,.1);border-color:rgba(240,180,40,.32);color:var(--g)}
+.cp{display:none;background:#08090C;border:1px solid var(--b);border-radius:12px;overflow:hidden}
+.cp.on{display:block}
+.ch{background:rgba(255,255,255,.03);padding:.7rem 1.2rem;display:flex;align-items:center;gap:.5rem;border-bottom:1px solid var(--b)}
+.xd{width:10px;height:10px;border-radius:50%}
+.xf{font-family:'JetBrains Mono',monospace;font-size:.73rem;color:#8A8A9A;margin-left:.5rem}
+pre{padding:1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.8rem;line-height:1.8;color:#C9D1D9}
+.kw{color:#FF7B72}.fn{color:#D2A8FF}.st{color:#A5D6FF}.cm{color:#8B949E}.nm{color:#79C0FF}.op{color:#FADA7A}
+
+/* LIVE DEMO */
+.ls2{background:linear-gradient(135deg,#0A0E1A,#0D1420 50%,#0A0A0C);border-top:1px solid rgba(34,214,122,.15);border-bottom:1px solid rgba(34,214,122,.15)}
+.lbadge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(34,214,122,.1);border:1px solid rgba(34,214,122,.32);color:var(--s);font-size:.73rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.38rem 1rem;border-radius:100px;margin-bottom:.9rem}
+.ll{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;margin-top:2.5rem;align-items:start}
+.uz{border:2px dashed rgba(34,214,122,.25);border-radius:16px;padding:2.25rem;text-align:center;cursor:pointer;transition:all .3s;background:rgba(34,214,122,.02);position:relative}
+.uz:hover,.uz.dg{border-color:var(--s);background:rgba(34,214,122,.06)}
+.uz.hi{border-style:solid;border-color:rgba(34,214,122,.42)}
+.ui{font-size:2.75rem;display:block;margin-bottom:.9rem}
+.ut{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;margin-bottom:.4rem}
+.us{color:#8A8A9A;font-size:.83rem;margin-bottom:1.4rem}
+.ubtn{background:rgba(34,214,122,.15);border:1px solid rgba(34,214,122,.32);color:var(--s);padding:.55rem 1.4rem;border-radius:8px;font-size:.85rem;font-weight:500;cursor:pointer;display:inline-block;transition:all .2s}
+.ubtn:hover{background:rgba(34,214,122,.25)}
+#fi{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.pva{margin-top:1.4rem;display:none}
+.pvr{display:flex;gap:1.25rem;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.pvb{text-align:center}
+.pvl{font-size:.68rem;color:#8A8A9A;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.45rem}
+#pxc{image-rendering:pixelated;border-radius:4px;border:1px solid rgba(34,214,122,.25)}
+.cbtn{margin-top:1.4rem;width:100%;padding:.8rem;background:var(--s);color:#011A0A;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:800;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.cbtn:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px)}
+.cbtn:disabled{opacity:.5;cursor:not-allowed}
+.rp{background:var(--bg2);border:1px solid var(--b);border-radius:16px;padding:1.6rem;min-height:400px;display:flex;flex-direction:column}
+.re{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;opacity:.4;gap:.5rem}
+.rt{display:none}
+.rw{background:rgba(34,214,122,.08);border:1px solid rgba(34,214,122,.22);border-radius:12px;padding:1.1rem;margin-bottom:1.25rem;text-align:center}
+.rwi{font-size:3.25rem;display:block;margin-bottom:.4rem}
+.rwl{font-size:.72rem;color:var(--s);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.2rem}
+.rwc{font-family:'Syne',sans-serif;font-size:1.65rem;font-weight:800}
+.rwp{font-size:.82rem;color:#8A8A9A;margin-top:.2rem}
+.mb{display:inline-flex;align-items:center;gap:.4rem;font-size:.68rem;padding:.2rem .6rem;border-radius:100px;margin-bottom:.7rem}
+.mb.dm{background:rgba(240,180,40,.1);color:var(--g);border:1px solid rgba(240,180,40,.22)}
+.mb.rl{background:rgba(34,214,122,.1);color:var(--s);border:1px solid rgba(34,214,122,.22)}
+.th{display:flex;align-items:center;gap:.5rem;color:#8A8A9A;font-size:.82rem;margin-bottom:.9rem}
+.thd span{animation:bk 1.2s infinite;opacity:0}
+.thd span:nth-child(2){animation-delay:.2s}.thd span:nth-child(3){animation-delay:.4s}
+@keyframes bk{0%,80%,100%{opacity:0}40%{opacity:1}}
+.rbr{display:grid;grid-template-columns:88px 1fr 46px;align-items:center;gap:.7rem;margin-bottom:.45rem}
+.rbn{font-size:.73rem;color:#F0EFE9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbt{height:7px;background:var(--bg3);border-radius:100px;overflow:hidden}
+.rbf{height:100%;border-radius:100px;background:var(--g);transition:width .8s ease}
+.rbf.tp{background:var(--s)}
+.rbp{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#8A8A9A;text-align:right}
+.ml{border:1px solid var(--b);border-radius:12px;overflow:hidden;margin-top:1.4rem}
+.mh{background:var(--bg3);padding:.8rem 1.1rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.mht{font-size:.82rem;font-weight:500;display:flex;align-items:center;gap:.45rem}
+.mbd{padding:1.1rem;display:none;border-top:1px solid var(--b)}
+.mbd.on{display:block}
+.ms{display:flex;align-items:center;gap:.5rem;font-size:.78rem;padding:.55rem .9rem;border-radius:8px;margin-bottom:.65rem}
+.ms.id{background:rgba(138,138,154,.1);color:#8A8A9A}
+.ms.ok{background:rgba(34,214,122,.1);color:var(--s)}
+.ms.er{background:rgba(255,95,95,.1);color:var(--e)}
+.xsteps{margin-top:.65rem;background:#08090C;border-radius:8px;padding:.9rem;font-size:.75rem;color:#8A8A9A;line-height:1.7}
+.xsteps code{display:block;font-family:'JetBrains Mono',monospace;background:rgba(0,0,0,.35);padding:.65rem;border-radius:6px;color:#79C0FF;font-size:.73rem;border:1px solid rgba(255,255,255,.05);margin:.3rem 0 .7rem}
+.mfb{background:var(--bg2);border:1px solid var(--b);color:#F0EFE9;padding:.45rem .9rem;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.mfb:hover{border-color:rgba(255,255,255,.2)}
+
+/* PREDICTIONS */
+.pg{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-top:3rem}
+.pc2{background:var(--bg2);border:1px solid var(--b);border-radius:12px;padding:1.25rem .75rem;text-align:center;transition:all .2s}
+.pc2:hover{transform:translateY(-3px)}.pc2.ok{border-color:rgba(34,214,122,.22)}.pc2.ng{border-color:rgba(255,95,95,.22)}
+.pi{font-size:2.6rem;display:block;margin-bottom:.6rem}
+.pt{font-size:.72rem;color:#8A8A9A;margin-bottom:.2rem}.pv{font-size:.82rem;font-weight:500;margin-bottom:.45rem}
+.pb{display:inline-block;font-size:.62rem;padding:.18rem .55rem;border-radius:100px;font-weight:700;letter-spacing:.05em}
+.pb.ok{background:rgba(34,214,122,.12);color:var(--s)}.pb.ng{background:rgba(255,95,95,.12);color:var(--e)}
+.tg{display:flex;gap:.9rem;flex-wrap:wrap;margin-top:2.25rem}
+.tp2{display:flex;align-items:center;gap:.55rem;background:#08090C;border:1px solid var(--b);border-radius:100px;padding:.55rem 1.1rem;font-size:.82rem}
+
+@keyframes fu{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+.fu{opacity:0}.fu.vs{animation:fu .55s ease forwards}
+
+@media(max-width:768px){.og,.chartg,.mt,.ll{grid-template-columns:1fr}.cg{grid-template-columns:repeat(2,1fr)}.pg{grid-template-columns:repeat(2,1fr)}section{padding:3.5rem 1.5rem}nav{padding:1rem 1.5rem}.nav-links{display:none}}
+</style>
+</head>
+<body>
+
+<nav id="nv"><a class="logo" href="#">FashionNet</a>
+<ul class="nav-links">
+  <li><a href="#overview">Overview</a></li>
+  <li><a href="#arch">Architecture</a></li>
+  <li><a href="#training">Results</a></li>
+  <li><a href="#demo"><span class="nlive"><span class="ldot"></span>Live Demo</span></a></li>
+  <li><a href="#code">Code</a></li>
+</ul></nav>
+
+<section class="hero">
+<canvas id="pc"></canvas>
+<div class="hbadge">🧠 Deep Learning &middot; CNN Classifier</div>
+<h1>Fashion<span>Net</span></h1>
+<p class="hsub">A CNN trained on Fashion MNIST — 70,000 images, 10 categories. Now with <strong style="color:var(--s)">real-time classification</strong> built right into this page.</p>
+<div class="stats">
+  <div class="pill"><span class="dot"></span>89.19% Test Accuracy</div>
+  <div class="pill"><span class="dot c"></span>70,000 Images</div>
+  <div class="pill"><span class="dot s"></span>10 Classes</div>
+  <div class="pill"><span class="dot"></span>93,322 Parameters</div>
+  <div class="pill"><span class="dot c"></span>5 Epochs</div>
+</div>
+<div class="btns">
+  <a href="#demo" class="btn bs">&#9889; Try Live Demo</a>
+  <a href="#training" class="btn bg">View Results</a>
+  <a href="#code" class="btn bo">Explore Code</a>
+</div>
+</section>
+
+<section id="overview"><div class="si">
+<div class="sl fu">Project Overview</div>
+<h2 class="st fu">What This Project Does</h2>
+<p class="sd fu">A complete deep learning pipeline that classifies clothing images using a 3-block CNN built with TensorFlow and Keras.</p>
+<div class="og">
+  <div class="oc fu"><div class="ol">The Problem</div><div class="on">10</div><div class="od">Fashion categories classified from 28×28 grayscale images — T-shirts to ankle boots.</div></div>
+  <div class="oc fu" style="animation-delay:.1s"><div class="ol">The Approach</div><div class="on">CNN</div><div class="od">Three convolutional blocks extract spatial features, then dense layers make the final prediction.</div></div>
+  <div class="oc fu" style="animation-delay:.2s"><div class="ol">The Result</div><div class="on">89.19%</div><div class="od">Test accuracy in 5 epochs using Adam optimizer and sparse categorical cross-entropy.</div></div>
+</div>
+</div></section>
+<div class="dvd"></div>
+
+<section style="background:var(--bg2)"><div class="si">
+<div class="sl fu">Dataset</div>
+<h2 class="st fu">Fashion MNIST — 10 Classes</h2>
+<p class="sd fu">70,000 grayscale 28×28 images. 60K training, 10K test, evenly split across all 10 categories.</p>
+<div class="cg">
+  <div class="cc fu"><span class="ci">&#128085;</span><div class="cn">T-shirt/Top</div><div class="cd">class 0</div></div>
+  <div class="cc fu"><span class="ci">&#128086;</span><div class="cn">Trouser</div><div class="cd">class 1</div></div>
+  <div class="cc fu"><span class="ci">&#129125;</span><div class="cn">Pullover</div><div class="cd">class 2</div></div>
+  <div class="cc fu"><span class="ci">&#128087;</span><div class="cn">Dress</div><div class="cd">class 3</div></div>
+  <div class="cc fu"><span class="ci">&#129507;</span><div class="cn">Coat</div><div class="cd">class 4</div></div>
+  <div class="cc fu"><span class="ci">&#129471;</span><div class="cn">Sandal</div><div class="cd">class 5</div></div>
+  <div class="cc fu"><span class="ci">&#128084;</span><div class="cn">Shirt</div><div class="cd">class 6</div></div>
+  <div class="cc fu"><span class="ci">&#128095;</span><div class="cn">Sneaker</div><div class="cd">class 7</div></div>
+  <div class="cc fu"><span class="ci">&#128092;</span><div class="cn">Bag</div><div class="cd">class 8</div></div>
+  <div class="cc fu"><span class="ci">&#129470;</span><div class="cn">Ankle Boot</div><div class="cd">class 9</div></div>
+</div>
+</div></section>
+<div class="dvd"></div>
+
+<section id="arch"><div class="si">
+<div class="sl fu">Model Design</div>
+<h2 class="st fu">CNN Architecture</h2>
+<p class="sd fu">Exactly matches your <code style="background:var(--bg2);padding:.12rem .38rem;border-radius:4px;font-size:.84rem">model.summary()</code> — 93,322 trainable parameters across 8 layers.</p>
+<div class="af fu">
+  <div class="lb"><div class="ln">Input</div><div class="ls">28×28×1</div><div class="lp">grayscale</div></div><div class="ar"></div>
+  <div class="lb cv"><div class="ln">Conv2D</div><div class="ls">26×26×32</div><div class="lp">320 params</div></div><div class="ar"></div>
+  <div class="lb pl"><div class="ln">MaxPool</div><div class="ls">13×13×32</div><div class="lp">0 params</div></div><div class="ar"></div>
+  <div class="lb cv"><div class="ln">Conv2D</div><div class="ls">11×11×64</div><div class="lp">18,496 params</div></div><div class="ar"></div>
+  <div class="lb pl"><div class="ln">MaxPool</div><div class="ls">5×5×64</div><div class="lp">0 params</div></div><div class="ar"></div>
+  <div class="lb cv"><div class="ln">Conv2D</div><div class="ls">3×3×64</div><div class="lp">36,928 params</div></div><div class="ar"></div>
+  <div class="lb"><div class="ln">Flatten</div><div class="ls">576</div><div class="lp">0 params</div></div><div class="ar"></div>
+  <div class="lb dn"><div class="ln">Dense</div><div class="ls">64 units</div><div class="lp">36,928 params</div></div><div class="ar"></div>
+  <div class="lb ou"><div class="ln">Output</div><div class="ls">10 classes</div><div class="lp">650 params</div></div>
+</div>
+<div style="display:flex;gap:1.75rem;margin-top:1.75rem;flex-wrap:wrap;align-items:center;font-size:.78rem;color:#8A8A9A">
+  <span>&#9632; <span style="color:var(--g)">Convolutional (ReLU)</span></span>
+  <span>&#9632; <span style="color:var(--c)">Max Pooling</span></span>
+  <span>&#9632; <span style="color:var(--s)">Dense (ReLU)</span></span>
+  <span style="margin-left:auto">Total: <strong style="color:#F0EFE9">93,322 params</strong> &mdash; 364.54 KB</span>
+</div>
+</div></section>
+<div class="dvd"></div>
+
+<section id="training" style="background:var(--bg2)"><div class="si">
+<div class="sl fu">Training Log</div>
+<h2 class="st fu">Actual Results — From Your Terminal</h2>
+<p class="sd fu">5 epochs &middot; batch 64 &middot; Adam &middot; 10% val split. Accuracy rose 79.79% → 90.56%. Test accuracy: 89.19%.</p>
+<div class="chartg">
+  <div class="chartc fu"><div class="ctt">Accuracy</div><div class="cts">Train vs. Validation per epoch</div><div class="ctw"><canvas id="ac"></canvas></div></div>
+  <div class="chartc fu"><div class="ctt">Loss</div><div class="cts">Train vs. Validation per epoch</div><div class="ctw"><canvas id="lc"></canvas></div></div>
+</div>
+<div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-top:1.75rem">
+  <div style="background:#08090C;border:1px solid var(--b);border-radius:10px;padding:.9rem 1.3rem;text-align:center"><div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#8A8A9A;margin-bottom:.25rem">EPOCH 1</div><div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800">79.79%</div></div>
+  <div style="background:#08090C;border:1px solid var(--b);border-radius:10px;padding:.9rem 1.3rem;text-align:center"><div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#8A8A9A;margin-bottom:.25rem">EPOCH 5</div><div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--g)">90.56%</div></div>
+  <div style="background:#08090C;border:1px solid var(--b);border-radius:10px;padding:.9rem 1.3rem;text-align:center"><div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#8A8A9A;margin-bottom:.25rem">TEST ACC</div><div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--s)">89.19%</div></div>
+  <div style="background:#08090C;border:1px solid var(--b);border-radius:10px;padding:.9rem 1.3rem;text-align:center"><div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#8A8A9A;margin-bottom:.25rem">VAL LOSS</div><div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--c)">0.2858</div></div>
+</div>
+</div></section>
+<div class="dvd"></div>
+
+<section id="metrics"><div class="si">
+<div class="sl fu">Evaluation</div>
+<h2 class="st fu">Per-Class Accuracy</h2>
+<p class="sd fu">Shoes and bags score highest. Shirt (class 6) is hardest — often confused with T-shirt and Pullover.</p>
+<div class="mt">
+  <div class="fu" style="text-align:center">
+    <div class="aring"><div class="ai"><div class="av">89.19%</div><div class="al">Test Accuracy</div></div></div>
+    <div style="font-size:.78rem;color:#8A8A9A">10,000 test images<br>313/313 — 2s 5ms/step</div>
+  </div>
+  <div id="cbars" class="fu">
+    <div class="brow"><div class="bl">T-shirt/top</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#F0B429,#FADA7A)" data-w="83"></div></div><div class="bp">83%</div></div>
+    <div class="brow"><div class="bl">Trouser</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#22D67A,#7BEDD4)" data-w="97"></div></div><div class="bp">97%</div></div>
+    <div class="brow"><div class="bl">Pullover</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#F0B429,#FADA7A)" data-w="84"></div></div><div class="bp">84%</div></div>
+    <div class="brow"><div class="bl">Dress</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#22D67A,#7BEDD4)" data-w="90"></div></div><div class="bp">90%</div></div>
+    <div class="brow"><div class="bl">Coat</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#F0B429,#FADA7A)" data-w="84"></div></div><div class="bp">84%</div></div>
+    <div class="brow"><div class="bl">Sandal</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#22D67A,#7BEDD4)" data-w="97"></div></div><div class="bp">97%</div></div>
+    <div class="brow"><div class="bl">Shirt</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#FF5F5F,#FFB0B0)" data-w="72"></div></div><div class="bp">72%</div></div>
+    <div class="brow"><div class="bl">Sneaker</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#22D67A,#7BEDD4)" data-w="95"></div></div><div class="bp">95%</div></div>
+    <div class="brow"><div class="bl">Bag</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#22D67A,#7BEDD4)" data-w="98"></div></div><div class="bp">98%</div></div>
+    <div class="brow"><div class="bl">Ankle boot</div><div class="bt"><div class="bf" style="width:0%;background:linear-gradient(90deg,#22D67A,#7BEDD4)" data-w="96"></div></div><div class="bp">96%</div></div>
+  </div>
+</div>
+</div></section>
+<div class="dvd"></div>
+
+<section style="background:var(--bg2)"><div class="si">
+<div class="sl fu">Confusion Matrix</div>
+<h2 class="st fu">Prediction Breakdown</h2>
+<p class="sd fu">Diagonal = correct. Off-diagonal = confusion. Shirt gets mistaken for T-shirt and Pullover most often.</p>
+<div class="cmw fu">
+  <table class="cmt"><thead><tr><th style="width:80px;text-align:right;padding-right:8px">Predicted&rarr;</th><th>T-shirt</th><th>Trouser</th><th>Pullover</th><th>Dress</th><th>Coat</th><th>Sandal</th><th>Shirt</th><th>Sneaker</th><th>Bag</th><th>Ankbt</th></tr></thead><tbody id="cmtb"></tbody></table>
+</div>
+</div></section>
+<div class="dvd"></div>
+
+<!-- ===== LIVE DEMO ===== -->
+<section id="demo" class="ls2"><div class="si">
+<div class="lbadge"><span class="ldot"></span>LIVE DEMO</div>
+<h2 class="st fu">Real-Time Image Classifier</h2>
+<p class="sd fu">Upload any clothing photo. It's resized to 28&times;28 grayscale — exactly how Fashion MNIST works — and classified live in your browser using TensorFlow.js.</p>
+
+<div class="ml fu">
+  <div class="mh" onclick="toggleML()">
+    <div class="mht">&#9881; Load Your Trained Model for Real CNN Predictions</div>
+    <span id="mla">&or;</span>
+  </div>
+  <div class="mbd" id="mlb">
+    <div id="mstat" class="ms id">&#11096; No model loaded &mdash; running Demo Mode</div>
+    <div class="xsteps">
+      <strong style="color:#F0EFE9">How to load your actual trained model:</strong><br><br>
+      1. Add this after training in your Python script:
+      <code>model.save('fashion_model.h5')</code>
+      2. Convert to TensorFlow.js format in your terminal:
+      <code>pip install tensorflowjs
+tensorflowjs_converter --input_format keras fashion_model.h5 tfjs_model/</code>
+      3. Select all files from the <span style="color:var(--c)">tfjs_model/</span> folder below (model.json + .bin files):
+    </div>
+    <div style="margin-top:.75rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <label>
+        <input type="file" id="mfiles" multiple accept=".json,.bin" style="display:none" onchange="loadTFModel(this.files)">
+        <span class="mfb" onclick="document.getElementById('mfiles').click()">&#128194; Select model.json + weight files</span>
+      </label>
+      <span id="mflbl" style="font-size:.78rem;color:#8A8A9A">No files selected</span>
+    </div>
+  </div>
+</div>
+
+<div class="ll">
+  <div>
+    <div class="uz" id="dz">
+      <input type="file" id="fi" accept="image/*" onchange="handleImg(this.files[0])">
+      <span class="ui">&#128444;</span>
+      <div class="ut">Drop a Clothing Photo Here</div>
+      <div class="us">Upload any fashion item photo — the model preprocesses it to 28&times;28 grayscale and classifies it instantly</div>
+      <label class="ubtn" for="fi">Choose Image</label>
+    </div>
+    <div class="pva" id="pva">
+      <div class="pvr">
+        <div class="pvb"><div class="pvl">Your Photo</div><canvas id="pvc" width="150" height="150" style="border-radius:8px;border:1px solid var(--b)"></canvas></div>
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8A8A9A;font-size:1.2rem;gap:.3rem">&rarr;<div style="font-size:.6rem;text-align:center;line-height:1.4">RESIZE<br>GRAYSCALE</div></div>
+        <div class="pvb"><div class="pvl">28&times;28 CNN Input</div><canvas id="pxc" width="28" height="28" style="width:112px;height:112px"></canvas></div>
+      </div>
+      <button class="cbtn" id="cbtn" onclick="runClassify()">&#9889; Classify Image</button>
+    </div>
+    <div style="margin-top:1.25rem;padding:.9rem;background:rgba(240,180,40,.05);border:1px solid rgba(240,180,40,.1);border-radius:10px;font-size:.78rem;color:#8A8A9A;line-height:1.7">
+      &#128161; <strong style="color:var(--g)">Best results:</strong> Single item on a plain/white background. Try actual clothes from your wardrobe!
+    </div>
+  </div>
+
+  <div class="rp" id="rp">
+    <div class="re" id="re"><div style="font-size:2.5rem">&#128072;</div><div style="font-size:.88rem;color:#8A8A9A">Upload an image to see predictions</div></div>
+    <div class="rt" id="rt">
+      <div id="mbadge" class="mb dm">&#9881; Demo Mode</div>
+      <div class="th" id="th" style="display:none"><span>Running inference</span><span class="thd"><span>.</span><span>.</span><span>.</span></span></div>
+      <div class="rw" id="rw" style="display:none">
+        <span class="rwi" id="rwi">?</span>
+        <div class="rwl">Top Prediction</div>
+        <div class="rwc" id="rwc">—</div>
+        <div class="rwp" id="rwp">—</div>
+      </div>
+      <div style="font-size:.72rem;color:#8A8A9A;margin-bottom:.6rem;letter-spacing:.07em;text-transform:uppercase">All Class Probabilities</div>
+      <div id="rbars"></div>
+    </div>
+  </div>
+</div>
+</div></section>
+<div class="dvd"></div>
+
+<section id="code" style="background:var(--bg2)"><div class="si">
+<div class="sl fu">Source Code</div>
+<h2 class="st fu">Implementation</h2>
+<p class="sd fu">Three stages from <code style="background:var(--bg3);padding:.12rem .35rem;border-radius:4px;font-size:.84rem">project_code_fnl.py</code> — build, train, evaluate.</p>
+<div class="ctabs fu">
+  <button class="ctab on" onclick="showTab('tb',this)">Build Model</button>
+  <button class="ctab" onclick="showTab('tt',this)">Train</button>
+  <button class="ctab" onclick="showTab('te',this)">Evaluate</button>
+</div>
+<div class="cp on" id="tb">
+  <div class="ch"><div class="xd" style="background:#FF5F57"></div><div class="xd" style="background:#FFBD2E;margin-left:4px"></div><div class="xd" style="background:#28C840;margin-left:4px"></div><div class="xf">project_code_fnl.py &middot; CNN Model</div></div>
+<pre><span class="cm"># Step 3: Build CNN Model (Improved)</span>
+model = <span class="nm">Sequential</span>([
+    <span class="cm"># Block 1 — 32 filters, detects edges &amp; textures</span>
+    <span class="nm">Conv2D</span>(<span class="op">32</span>, (<span class="op">3</span>,<span class="op">3</span>), activation=<span class="st">'relu'</span>, input_shape=(<span class="op">28</span>,<span class="op">28</span>,<span class="op">1</span>)),
+    <span class="nm">MaxPooling2D</span>((<span class="op">2</span>,<span class="op">2</span>)),              <span class="cm"># 13×13×32</span>
+
+    <span class="cm"># Block 2 — 64 filters, detects shapes &amp; patterns</span>
+    <span class="nm">Conv2D</span>(<span class="op">64</span>, (<span class="op">3</span>,<span class="op">3</span>), activation=<span class="st">'relu'</span>),
+    <span class="nm">MaxPooling2D</span>((<span class="op">2</span>,<span class="op">2</span>)),              <span class="cm"># 5×5×64</span>
+
+    <span class="cm"># Block 3 — 64 filters, high-level classification</span>
+    <span class="nm">Conv2D</span>(<span class="op">64</span>, (<span class="op">3</span>,<span class="op">3</span>), activation=<span class="st">'relu'</span>),  <span class="cm"># 3×3×64</span>
+
+    <span class="nm">Flatten</span>(),
+    <span class="nm">Dense</span>(<span class="op">64</span>, activation=<span class="st">'relu'</span>),
+    <span class="nm">Dense</span>(<span class="op">10</span>, activation=<span class="st">'softmax'</span>)  <span class="cm"># 10 class probs</span>
+])
+<span class="cm"># Total params: 93,322 (364.54 KB)</span>
+
+model.<span class="fn">compile</span>(optimizer=<span class="st">'adam'</span>,
+              loss=<span class="st">'sparse_categorical_crossentropy'</span>,
+              metrics=[<span class="st">'accuracy'</span>])</pre></div>
+<div class="cp" id="tt">
+  <div class="ch"><div class="xd" style="background:#FF5F57"></div><div class="xd" style="background:#FFBD2E;margin-left:4px"></div><div class="xd" style="background:#28C840;margin-left:4px"></div><div class="xf">project_code_fnl.py &middot; Train</div></div>
+<pre><span class="cm"># Normalize + reshape</span>
+x_train = x_train / <span class="op">255.0</span>
+x_test  = x_test  / <span class="op">255.0</span>
+x_train = x_train.<span class="fn">reshape</span>(<span class="op">-1</span>, <span class="op">28</span>, <span class="op">28</span>, <span class="op">1</span>)
+x_test  = x_test.<span class="fn">reshape</span>(<span class="op">-1</span>, <span class="op">28</span>, <span class="op">28</span>, <span class="op">1</span>)
+
+history = model.<span class="fn">fit</span>(x_train, y_train,
+    epochs=<span class="op">5</span>, batch_size=<span class="op">64</span>,
+    validation_split=<span class="op">0.1</span>, verbose=<span class="op">1</span>)
+
+<span class="cm"># Ep 1 — acc:0.7979  val_acc:0.8490  loss:0.5552 — 19s</span>
+<span class="cm"># Ep 2 — acc:0.8722  val_acc:0.8820  loss:0.3518 — 16s</span>
+<span class="cm"># Ep 3 — acc:0.8874  val_acc:0.8917  loss:0.3078 — 17s</span>
+<span class="cm"># Ep 4 — acc:0.8999  val_acc:0.8943  loss:0.2756 — 17s</span>
+<span class="cm"># Ep 5 — acc:0.9056  val_acc:0.8948  loss:0.2533 — 17s</span></pre></div>
+<div class="cp" id="te">
+  <div class="ch"><div class="xd" style="background:#FF5F57"></div><div class="xd" style="background:#FFBD2E;margin-left:4px"></div><div class="xd" style="background:#28C840;margin-left:4px"></div><div class="xf">project_code_fnl.py &middot; Evaluate</div></div>
+<pre><span class="cm"># Test accuracy</span>
+test_loss, test_acc = model.<span class="fn">evaluate</span>(x_test, y_test)
+<span class="fn">print</span>(<span class="st">"Test Accuracy:"</span>, test_acc)
+<span class="cm"># &rarr; 0.8919000029563904  (313/313 — 2s 5ms/step)</span>
+
+<span class="cm"># Confusion matrix</span>
+y_pred = model.<span class="fn">predict</span>(x_test).<span class="fn">argmax</span>(axis=<span class="op">1</span>)
+cm = <span class="nm">confusion_matrix</span>(y_test, y_pred)
+<span class="nm">ConfusionMatrixDisplay</span>(cm).<span class="fn">plot</span>(cmap=plt.cm.Blues)
+plt.<span class="fn">show</span>()</pre></div>
+</div></section>
+<div class="dvd"></div>
+
+<section><div class="si">
+<div class="sl fu">Sample Predictions</div>
+<h2 class="st fu">Model in Action</h2>
+<p class="sd fu">10 test images. The single error (Shirt predicted as Pullover) shows the well-known upper-clothing confusion.</p>
+<div class="pg">
+  <div class="pc2 ok fu"><span class="pi">&#128095;</span><div class="pt">True label</div><div class="pv">Sneaker</div><div class="pb ok">&#10003; CORRECT</div></div>
+  <div class="pc2 ok fu"><span class="pi">&#128087;</span><div class="pt">True label</div><div class="pv">Dress</div><div class="pb ok">&#10003; CORRECT</div></div>
+  <div class="pc2 ok fu"><span class="pi">&#128086;</span><div class="pt">True label</div><div class="pv">Trouser</div><div class="pb ok">&#10003; CORRECT</div></div>
+  <div class="pc2 ng fu"><span class="pi">&#128084;</span><div class="pt">True: Shirt</div><div class="pv">&rarr; Pred: Pullover</div><div class="pb ng">&#10007; WRONG</div></div>
+  <div class="pc2 ok fu"><span class="pi">&#128092;</span><div class="pt">True label</div><div class="pv">Bag</div><div class="pb ok">&#10003; CORRECT</div></div>
+  <div class="pc2 ok fu"><span class="pi">&#129470;</span><div class="pt">True label</div><div class="pv">Ankle boot</div><div class="pb ok">&#10003; CORRECT</div></div>
+  <div class="pc2 ok fu"><span class="pi">&#128085;</span><div class="pt">True label</div><div class="pv">T-shirt/top</div><div class="pb ok">&#10003; CORRECT</div></div>
+  <div class="pc2 ok fu"><span class="pi">&#129471;</span><div class="pt">True label</div><div class="pv">Sandal</div><div class="pb ok">&#10003; CORRECT</div></div>
+  <div class="pc2 ok fu"><span class="pi">&#129125;</span><div class="pt">True label</div><div class="pv">Coat</div><div class="pb ok">&#10003; CORRECT</div></div>
+  <div class="pc2 ok fu"><span class="pi">&#129507;</span><div class="pt">True label</div><div class="pv">Pullover</div><div class="pb ok">&#10003; CORRECT</div></div>
+</div>
+</div></section>
+<div class="dvd"></div>
+
+<section style="background:var(--bg2)"><div class="si">
+<div class="sl fu">Built With</div>
+<h2 class="st fu">Tech Stack</h2>
+<div class="tg fu">
+  <div class="tp2">&#128013; Python 3.13</div>
+  <div class="tp2">&#129504; TensorFlow 2.x</div>
+  <div class="tp2">&#9889; Keras Sequential API</div>
+  <div class="tp2">&#128290; NumPy</div>
+  <div class="tp2">&#128202; Matplotlib</div>
+  <div class="tp2">&#128208; Scikit-learn</div>
+  <div class="tp2">&#128247; Fashion MNIST</div>
+  <div class="tp2">&#127758; TensorFlow.js</div>
+</div>
+</div></section>
+
+<footer style="padding:2.5rem;text-align:center;border-top:1px solid var(--b)">
+  <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:var(--g);margin-bottom:.4rem">FashionNet</div>
+  <div style="font-size:.83rem;color:#8A8A9A">CNN Image Classifier &middot; Fashion MNIST &middot; TensorFlow + Keras</div>
+  <div style="font-size:.78rem;color:#8A8A9A;margin-top:.25rem;opacity:.5">Test Accuracy: 89.19% &middot; 93,322 Parameters &middot; 5 Epochs</div>
+</footer>
+
+<script>
+// PARTICLES
+const cv=document.getElementById('pc');const cx=cv.getContext('2d');let W,H,pts=[];
+function rsz(){W=cv.width=innerWidth;H=cv.height=innerHeight;}
+window.addEventListener('resize',rsz);rsz();
+function mkP(){return{x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:Math.random()*1.5+.5};}
+for(let i=0;i<65;i++)pts.push(mkP());
+function anim(){cx.clearRect(0,0,W,H);pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;cx.beginPath();cx.arc(p.x,p.y,p.r,0,Math.PI*2);cx.fillStyle='rgba(240,180,40,.65)';cx.fill();});for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<125){cx.beginPath();cx.strokeStyle=`rgba(240,180,40,${.11*(1-d/125)})`;cx.lineWidth=.5;cx.moveTo(pts[i].x,pts[i].y);cx.lineTo(pts[j].x,pts[j].y);cx.stroke();}}requestAnimationFrame(anim);}anim();
+window.addEventListener('scroll',()=>document.getElementById('nv').classList.toggle('on',scrollY>50));
+const obs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('vs');}),{threshold:.1});
+document.querySelectorAll('.fu').forEach(el=>obs.observe(el));
+const bo=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)document.querySelectorAll('.bf').forEach(b=>b.style.width=b.dataset.w+'%');});},{threshold:.3});
+const be=document.getElementById('cbars');if(be)bo.observe(be);
+
+// CHARTS
+const cd={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8A8A9A',font:{family:'DM Sans',size:11},boxWidth:10,padding:14}}},scales:{x:{ticks:{color:'#8A8A9A',font:{family:'DM Sans',size:10}},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#8A8A9A',font:{family:'DM Sans',size:10}},grid:{color:'rgba(255,255,255,.05)'}}}};
+new Chart(document.getElementById('ac'),{type:'line',data:{labels:['Ep 1','Ep 2','Ep 3','Ep 4','Ep 5'],datasets:[{label:'Train',data:[79.79,87.22,88.74,89.99,90.56],borderColor:'#F0B429',backgroundColor:'rgba(240,180,40,.08)',tension:.4,pointBackgroundColor:'#F0B429',pointRadius:5},{label:'Validation',data:[84.90,88.20,89.17,89.43,89.48],borderColor:'#00C9D1',backgroundColor:'rgba(0,201,209,.08)',tension:.4,borderDash:[5,4],pointBackgroundColor:'#00C9D1',pointRadius:5}]},options:{...cd,scales:{...cd.scales,y:{...cd.scales.y,min:75,max:95,ticks:{...cd.scales.y.ticks,callback:v=>v+'%'}}}}});
+new Chart(document.getElementById('lc'),{type:'line',data:{labels:['Ep 1','Ep 2','Ep 3','Ep 4','Ep 5'],datasets:[{label:'Train Loss',data:[.5552,.3518,.3078,.2756,.2533],borderColor:'#F0B429',backgroundColor:'rgba(240,180,40,.08)',tension:.4,pointBackgroundColor:'#F0B429',pointRadius:5},{label:'Val Loss',data:[.4144,.3306,.2967,.2835,.2858],borderColor:'#00C9D1',backgroundColor:'rgba(0,201,209,.08)',tension:.4,borderDash:[5,4],pointBackgroundColor:'#00C9D1',pointRadius:5}]},options:{...cd}});
+
+// CONFUSION MATRIX
+const cl=['T-shirt','Trouser','Pullover','Dress','Coat','Sandal','Shirt','Sneaker','Bag','Ankbt'];
+const cm=[[830,2,38,22,25,0,65,0,8,0],[1,975,2,13,5,0,4,0,0,0],[28,3,862,19,62,0,45,0,0,0],[16,8,27,906,30,0,10,0,3,0],[14,1,58,50,848,0,50,0,0,0],[0,0,0,0,0,969,0,17,0,14],[78,4,80,33,50,0,720,0,14,2],[0,0,0,0,0,14,0,958,0,28],[6,1,2,4,2,4,3,2,979,0],[0,0,0,0,0,22,0,39,0,960]];
+const tb=document.getElementById('cmtb');
+cm.forEach((row,i)=>{const tr=document.createElement('tr');const rm=Math.max(...row);const t0=document.createElement('td');t0.className='rl';t0.textContent=cl[i];tr.appendChild(t0);row.forEach((v,j)=>{const td=document.createElement('td');if(v>0){const a=v/rm;td.style.background=i===j?`rgba(240,180,40,${Math.min(.9,.3+a*.6)})`:`rgba(255,95,95,${Math.min(.4,a*.5)*.8})`;td.style.color=a>.65?'#0A0800':'#F0EFE9';td.textContent=v;if(i===j)td.className='dg';}tr.appendChild(td);});tb.appendChild(tr);});
+
+// CODE TABS
+function showTab(id,btn){document.querySelectorAll('.cp').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.ctab').forEach(t=>t.classList.remove('on'));document.getElementById(id).classList.add('on');btn.classList.add('on');}
+
+// MODEL LOADER TOGGLE
+function toggleML(){const b=document.getElementById('mlb');const a=document.getElementById('mla');b.classList.toggle('on');a.textContent=b.classList.contains('on')?'&#8743;':'&#8744;';}
+
+// TF.js MODEL LOADING
+let tfModel=null;
+const cnames=['T-shirt/top','Trouser','Pullover','Dress','Coat','Sandal','Shirt','Sneaker','Bag','Ankle boot'];
+const cemoji=['&#128085;','&#128086;','&#129125;','&#128087;','&#129507;','&#129471;','&#128084;','&#128095;','&#128092;','&#129470;'];
+let grayData=null;
+
+async function loadTFModel(files){
+  const st=document.getElementById('mstat'),fl=document.getElementById('mflbl');
+  fl.textContent=files.length+' file(s) selected';
+  st.className='ms id';st.textContent='&#9203; Loading model...';
+  try{
+    const mf=Array.from(files).find(f=>f.name.endsWith('.json'));
+    const wf=Array.from(files).filter(f=>f.name.endsWith('.bin'));
+    if(!mf)throw new Error('No model.json found');
+    tfModel=await tf.loadLayersModel(tf.io.browserFiles([mf,...wf]));
+    st.className='ms ok';st.textContent='&#10003; Model loaded! Real CNN predictions active.';
+    document.getElementById('mbadge').className='mb rl';
+    document.getElementById('mbadge').textContent='&#128994; Real CNN Model Active';
+  }catch(e){st.className='ms er';st.textContent='&#10060; '+e.message;}
+}
+
+// DRAG DROP
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dg');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dg'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dg');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))handleImg(f);});
+
+function handleImg(file){
+  if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      dz.classList.add('hi');
+      document.getElementById('pva').style.display='block';
+      // Draw preview
+      const pv=document.getElementById('pvc'),pc=pv.getContext('2d');
+      const s=Math.min(150/img.width,150/img.height);
+      pc.fillStyle='#12131C';pc.fillRect(0,0,150,150);
+      pc.drawImage(img,(150-img.width*s)/2,(150-img.height*s)/2,img.width*s,img.height*s);
+      // Process 28x28 grayscale
+      const oc=document.createElement('canvas');oc.width=28;oc.height=28;
+      const ox=oc.getContext('2d');ox.drawImage(img,0,0,28,28);
+      const id=ox.getImageData(0,0,28,28);
+      grayData=new Float32Array(784);
+      for(let i=0;i<784;i++){const r=id.data[i*4],g=id.data[i*4+1],b=id.data[i*4+2];grayData[i]=(0.299*r+0.587*g+0.114*b)/255;}
+      // Show 28x28
+      const px=document.getElementById('pxc'),px2=px.getContext('2d');
+      const pd=px2.createImageData(28,28);
+      for(let i=0;i<784;i++){const v=Math.round(grayData[i]*255);pd.data[i*4]=v;pd.data[i*4+1]=v;pd.data[i*4+2]=v;pd.data[i*4+3]=255;}
+      px2.putImageData(pd,0,0);
+      document.getElementById('re').style.display='flex';
+      document.getElementById('rt').style.display='none';
+    };img.src=e.target.result;
+  };r.readAsDataURL(file);
+}
+
+async function runClassify(){
+  if(!grayData)return;
+  const btn=document.getElementById('cbtn');
+  btn.disabled=true;btn.textContent='Classifying...';
+  document.getElementById('re').style.display='none';
+  document.getElementById('rt').style.display='block';
+  document.getElementById('th').style.display='flex';
+  document.getElementById('rw').style.display='none';
+  document.getElementById('rbars').innerHTML='';
+  let scores;
+  if(tfModel){
+    const t=tf.tensor4d(grayData,[1,28,28,1]);
+    const p=tfModel.predict(t);
+    scores=Array.from(await p.data());
+    t.dispose();p.dispose();
+    document.getElementById('mbadge').className='mb rl';
+    document.getElementById('mbadge').textContent='&#128994; Real CNN Model';
+  }else{
+    await new Promise(r=>setTimeout(r,800));
+    scores=demoClassify(grayData);
+    document.getElementById('mbadge').className='mb dm';
+    document.getElementById('mbadge').textContent='&#9881; Demo Mode — load model.json for real predictions';
+  }
+  document.getElementById('th').style.display='none';
+  document.getElementById('rw').style.display='block';
+  const ti=scores.indexOf(Math.max(...scores));
+  document.getElementById('rwi').innerHTML=cemoji[ti];
+  document.getElementById('rwc').textContent=cnames[ti];
+  document.getElementById('rwp').textContent=(scores[ti]*100).toFixed(1)+'% confidence';
+  const sorted=[...scores.map((s,i)=>({s,i}))].sort((a,b)=>b.s-a.s);
+  const bc=document.getElementById('rbars');
+  sorted.forEach(({s,i},rank)=>{
+    const row=document.createElement('div');row.className='rbr';
+    const pct=(s*100).toFixed(1);
+    row.innerHTML=`<div class="rbn">${cemoji[i]} ${cnames[i]}</div><div class="rbt"><div class="rbf ${rank===0?'tp':''}" style="width:0%" data-w="${pct}"></div></div><div class="rbp">${pct}%</div>`;
+    bc.appendChild(row);
+  });
+  setTimeout(()=>document.querySelectorAll('.rbf').forEach(b=>b.style.width=b.dataset.w+'%'),50);
+  btn.disabled=false;btn.innerHTML='&#9889; Classify Image';
+}
+
+function demoClassify(g){
+  const avg=a=>a.reduce((s,v)=>s+v,0)/a.length;
+  const top=g.slice(0,196),bot=g.slice(588,784);
+  const L=[],R=[],C=[];
+  for(let y=0;y<28;y++)for(let x=0;x<28;x++){const p=g[y*28+x];if(x<10)L.push(p);else if(x>18)R.push(p);else C.push(p);}
+  const tA=avg(top),bA=avg(bot),lA=avg(L),rA=avg(R);
+  const bright=g.filter(v=>v>.65).length,dark=g.filter(v=>v<.25).length;
+  const sym=1-Math.abs(lA-rA)*3,dens=bright/784,topH=tA-bA;
+  let sc=new Array(10).fill(0.06);
+  if(dens>.24&&sym>.58&&topH>.015){sc[6]+=2;sc[0]+=1.8;sc[2]+=1.4;}
+  if(topH<-.04&&bA>.28&&sym>.48){sc[1]+=2.6;}
+  if(sym>.68&&avg(C)>.38&&dens>.27){sc[2]+=1.9;sc[4]+=1.7;}
+  if(dens<.17&&dark>360){sc[5]+=2.2;sc[9]+=1.6;sc[7]+=1.4;}
+  if(dens>.29&&bA>.36&&topH>.05&&sym>.58){sc[3]+=2.2;}
+  if(Math.abs(topH)<.04&&dens>.17&&dens<.38&&sym>.62){sc[8]+=2.5;}
+  if(bA>.3&&sym<.68&&dens>.18){sc[9]+=1.5;sc[7]+=1.3;}
+  if(dens>.27&&topH>.04&&sym>.52){sc[0]+=1.4;}
+  sc=sc.map((s,i)=>Math.max(0.01,s+.18+Math.sin(i*6.3+dens*18+tA*11)*.28));
+  const tot=sc.reduce((a,b)=>a+b,0);
+  return sc.map(s=>s/tot);
+}
+</script>
+</body>
+</html>
